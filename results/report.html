@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 14-May-2021 at 13:08:51 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>JAVA_HOME</td>
+        <td>C:\Program Files\Java\jdk-11.0.11</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.10.0", "pytest": "6.2.3"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19041-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"depends": "1.0.1", "forked": "1.3.0", "html": "3.1.1", "metadata": "1.11.0", "order": "0.11.0", "xdist": "2.2.1"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.9.4</td></tr></table>
+    <h2>Summary</h2>
+    <p>7 tests ran in 80.80 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">7 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_authentication.py::TestAuthentication::test_login[getLoginData0]</td>
+          <td class="col-duration">9.13</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_login:test_authentication.py:18 verify login
+DEBUG    test_login:test_authentication.py:21 login window opened
+INFO     test_login:test_authentication.py:24 Loging in as user anandchndrn@demo.com
+DEBUG    test_login:test_authentication.py:27 Entered user name anandchndrn@demo.com
+DEBUG    test_login:test_authentication.py:30 entered password demoblaze@123
+DEBUG    test_login:test_authentication.py:35 logged in username is visible in home page<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_purchase.py::TestPurchase::test_purchaseProduct[getTestData0]</td>
+          <td class="col-duration">18.68</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_purchaseProduct:test_purchase.py:28 verify login
+DEBUG    test_purchaseProduct:test_purchase.py:31 login window opened
+INFO     test_purchaseProduct:test_purchase.py:42 Loging in as user anandchndrn@demo.com
+DEBUG    test_purchaseProduct:test_purchase.py:45 Entered user name anandchndrn@demo.com
+DEBUG    test_purchaseProduct:test_purchase.py:48 entered password demoblaze@123
+DEBUG    test_purchaseProduct:test_purchase.py:51 user successfully logged in
+DEBUG    test_purchaseProduct:test_purchase.py:53 opening product category Phones
+DEBUG    test_purchaseProduct:test_purchase.py:57 opening product page for  HTC One M9
+DEBUG    test_purchaseProduct:test_purchase.py:61 Price of HTC One M9 is $700 
+INFO     test_purchaseProduct:test_purchase.py:63 adding HTC One M9 to the cart
+DEBUG    test_purchaseProduct:test_purchase.py:66 alert opened with text: Product added.
+DEBUG    test_purchaseProduct:test_purchase.py:68 the alert text matches expected
+DEBUG    test_purchaseProduct:test_purchase.py:70 alert accepted
+DEBUG    test_purchaseProduct:test_purchase.py:71 HTC One M9 was added to the cart
+INFO     test_purchaseProduct:test_purchase.py:72 Navigating to cart
+DEBUG    test_purchaseProduct:test_purchase.py:75 cart was loaded
+DEBUG    test_purchaseProduct:test_purchase.py:77 the product in cart is HTC One M9
+DEBUG    test_purchaseProduct:test_purchase.py:81 the price in cart is $700 
+INFO     test_purchaseProduct:test_purchase.py:82 proceeding to pay
+DEBUG    test_purchaseProduct:test_purchase.py:86 filling payment info
+DEBUG    test_purchaseProduct:test_purchase.py:89 name Anand entered
+DEBUG    test_purchaseProduct:test_purchase.py:92 country India entered
+DEBUG    test_purchaseProduct:test_purchase.py:95 city Bangalore entered
+DEBUG    test_purchaseProduct:test_purchase.py:98 card 123456789012 entered
+DEBUG    test_purchaseProduct:test_purchase.py:101 month April entered
+DEBUG    test_purchaseProduct:test_purchase.py:104 month 2020 entered
+DEBUG    test_purchaseProduct:test_purchase.py:106 purchasing product
+DEBUG    test_purchaseProduct:test_purchase.py:108 product purchase complete<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_authentication.py::TestAuthentication::test_logout[getLoginData0]</td>
+          <td class="col-duration">9.35</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_logout:test_authentication.py:44 login
+DEBUG    test_logout:test_authentication.py:47 login window opened
+INFO     test_logout:test_authentication.py:50 Loging in as user anandchndrn@demo.com
+DEBUG    test_logout:test_authentication.py:53 Entered user name anandchndrn@demo.com
+DEBUG    test_logout:test_authentication.py:56 entered password demoblaze@123
+INFO     test_logout:test_authentication.py:59 loging out
+INFO     test_logout:test_authentication.py:61 logout link was clicked
+DEBUG    test_logout:test_authentication.py:64 logged out username is not visible in home page
+DEBUG    test_logout:test_authentication.py:65 user was successfully logged out<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_authentication.py::TestAuthentication::test_invalid_user_login</td>
+          <td class="col-duration">7.32</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_invalid_user_login:test_authentication.py:77 verify login with invalid user
+DEBUG    test_invalid_user_login:test_authentication.py:81 login window opened
+INFO     test_invalid_user_login:test_authentication.py:82 Loging in as user invalid_user@demo.com
+DEBUG    test_invalid_user_login:test_authentication.py:85 Entered user name invalid_user@demo.com
+DEBUG    test_invalid_user_login:test_authentication.py:88 entered password password
+DEBUG    test_invalid_user_login:test_authentication.py:92 alert opened with text: User does not exist.
+DEBUG    test_invalid_user_login:test_authentication.py:94 the alert text matches expected
+DEBUG    test_invalid_user_login:test_authentication.py:96 alert accepted
+DEBUG    test_invalid_user_login:test_authentication.py:98 login window was closed<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_purchase.py::TestPurchase::test_purchaseAllProductsInCategory[getTestData0]</td>
+          <td class="col-duration">49.74</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_purchaseAllProductsInCategory:test_purchase.py:120 verify login
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:123 login window opened
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:133 Loging in as user anandchndrn@demo.com
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:136 Entered user name anandchndrn@demo.com
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:139 entered password demoblaze@123
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:142 user successfully logged in
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:145 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:159 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Samsung galaxy s6
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Samsung galaxy s6 is $360
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Samsung galaxy s6 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Samsung galaxy s6 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:171 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:171 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Nokia lumia 1520
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Nokia lumia 1520 is $820
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Nokia lumia 1520 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Nokia lumia 1520 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Nexus 6
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Nexus 6 is $650
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Nexus 6 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Nexus 6 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Samsung galaxy s7
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Samsung galaxy s7 is $800
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Samsung galaxy s7 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Samsung galaxy s7 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Iphone 6 32gb
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Iphone 6 32gb is $790
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Iphone 6 32gb to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Iphone 6 32gb was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:171 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  Sony xperia z5
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of Sony xperia z5 is $320
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding Sony xperia z5 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 Sony xperia z5 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:171 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:171 some elements disappeared from dom.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:172 opening product page for  HTC One M9
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:176 Price of HTC One M9 is $700
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:178 adding HTC One M9 to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:181 alert opened with text: Product added.
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:183 the alert text matches expected
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:185 alert accepted
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:186 HTC One M9 was added to the cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:189 opening product category Phones
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:194 opening cart
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:197 cart was loaded
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:200 Total Price is 5140
+INFO     test_purchaseAllProductsInCategory:test_purchase.py:205 proceeding to pay
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:209 filling payment info
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:212 name Anand entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:215 country India entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:218 city Bangalore entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:221 card 123456789012 entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:224 month April entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:227 month 2020 entered
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:229 purchasing product
+DEBUG    test_purchaseAllProductsInCategory:test_purchase.py:231 product purchase complete<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_authentication.py::TestAuthentication::test_cancel_login[getLoginData0]</td>
+          <td class="col-duration">6.83</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw1] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_cancel_login:test_authentication.py:106 verify login
+DEBUG    test_cancel_login:test_authentication.py:110 login window opened
+INFO     test_cancel_login:test_authentication.py:113 Loging in as user anandchndrn@demo.com
+DEBUG    test_cancel_login:test_authentication.py:116 Entered user name anandchndrn@demo.com
+DEBUG    test_cancel_login:test_authentication.py:119 entered password demoblaze@123
+DEBUG    test_cancel_login:test_authentication.py:121 login window was closed
+DEBUG    test_cancel_login:test_authentication.py:124 username is not visible in home page
+DEBUG    test_cancel_login:test_authentication.py:125 user was successfully  able to cancel login window<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_contact.py::TestContact::test_sendMessage[getContactData0]</td>
+          <td class="col-duration">5.34</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/>[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe[gw0] win32 -- Python 3.9.4 c:\users\anand chandran\appdata\local\programs\python\python39\python.exe<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     test_sendMessage:test_contact.py:20 accessing contact
+DEBUG    test_sendMessage:test_contact.py:22  message window has opened
+INFO     test_sendMessage:test_contact.py:23 filling message details
+DEBUG    test_sendMessage:test_contact.py:26 email anandchndrn@demo.com was entered
+DEBUG    test_sendMessage:test_contact.py:29 name Anand was entered
+DEBUG    test_sendMessage:test_contact.py:32 message Thanks for the DemoSite was entered
+DEBUG    test_sendMessage:test_contact.py:36 alert opened with text: Thanks for the message!!
+DEBUG    test_sendMessage:test_contact.py:38 the alert text matches expected
+DEBUG    test_sendMessage:test_contact.py:40 alert accepted<br/></div></td></tr></tbody></table></body></html>
