@@ -20,5 +20,6 @@ selenium                       3.141.0
 run command   py.test --html=results/report.html --browser_name={browser} -m {tag} -n 2 -v
 
 browser can take values chrome or firefox
+
 tag can take values regression or sanity
 
