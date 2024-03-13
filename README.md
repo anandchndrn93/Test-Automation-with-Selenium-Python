@@ -1,7 +1,7 @@
 # Test-Automation-with-Selenium-Python
 About This is a sample test Automation Framework utilizing selenium with Python built to automate 7 tests for https://www.demoblaze.com/.
 
-design pattern followed is Page Object Model. Browsers used are chrome and firefox
+design pattern followed is Page Object Model. Browsers used are chrome, firefox, ie and edge
 
 # Requirements 
 
