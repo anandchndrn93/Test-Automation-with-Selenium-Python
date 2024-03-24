@@ -1,15 +1,20 @@
 name: Python Selenium Tests
 on:
   workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run tests on (chrome, firefox, edge, ie)'
+        required: true
+        type: choice
+        options: [chrome, firefox, edge, ie]
+      tags:
+        description: 'Comma-separated tags to filter tests (optional)'
+        type: string
 jobs:
   test_automation:
   
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        browser: [chrome, firefox, edge, ie]
-        
     steps:
       - uses: actions/checkout@v3
 
@@ -29,10 +34,21 @@ jobs:
           pip install pytest-xdist==3.5.0
           pip install selenium==4.8.3
           pip install webdriver-manager==4.0.1
-      - name: Run Selenium tests on ${{ matrix.browser }}
+      - name: Get tags from workflow dispatch (optional)
+        id: get_tags
         run: |
-          python -m py.test --html=results/report.html --browser_name= ${{ matrix.browser }} -n 2 -v
+          # Get tags passed during manual workflow execution
+          TAGS=${{ github.event.inputs.tags }}
+          if [[ -z "$TAGS" ]]; then
+              echo "No tags provided. Running all Regression."
+          else
+              echo "Running tests with tags: $TAGS"
+              TAGS="regression"
+          fi
+      - name: Run Selenium tests on ${{ github.event.inputs.browser }}
+        run: |
+          python -m py.test --html=results/report.html --browser_name= ${{ github.event.inputs.browser }} -m ${{ steps.get_tags.outputs.TAGS }} -n 2 -v
       - uses: actions/upload-artifact@v3  # Upload test report
         with:
           name: Results
-          path: ./results
+          path: ./results 
