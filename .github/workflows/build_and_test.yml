@@ -40,6 +40,7 @@ jobs:
           pip install pytest-metadata==3.1.1
           pip install pytest-order==1.2.0
           pip install pytest-xdist==3.5.0
+          pip install pytest-ast-transformer==1.0.3
           pip install selenium==4.8.3
           pip install webdriver-manager==4.0.1
       - name: Get tags from workflow dispatch (optional)
