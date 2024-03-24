@@ -56,7 +56,7 @@ jobs:
           fi
       - name: Run Selenium tests on ${{ github.event.inputs.browser }}
         run: |
-          python -m py.test --html=results/report.html --browser_name=${{ github.event.inputs.browser }} -m ${{steps.get_tags.outputs.execution_tag}} --full-trace
+          python -m py.test --html=results/report.html --browser_name=${{ github.event.inputs.browser }} -m ${{steps.get_tags.outputs.execution_tag}} --tb=long
       - uses: actions/upload-artifact@v3  # Upload test report
         with:
           name: Results
