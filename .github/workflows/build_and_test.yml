@@ -31,7 +31,7 @@ jobs:
           pip install webdriver-manager==4.0.1
       - name: Run Selenium tests on ${{ matrix.browser }}
         run: |
-          python -m py.test --html=results/report.html --browser_name= ${{ matrix.browser }} -n 2
+          python -m py.test --html=results/report.html --browser_name= ${{ matrix.browser }} -n 2 -v
       - uses: actions/upload-artifact@v3  # Upload test report
         with:
           name: Results
