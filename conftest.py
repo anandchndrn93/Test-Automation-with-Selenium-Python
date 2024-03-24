@@ -25,6 +25,8 @@ def pytest_addoption(parser):
 @pytest.fixture()
 def setup(request, context):
     global driver
+    logger = logging.getLogger("demoblaze.driver")
+    logger.info("launching...")
     driver_manager = DriverFactory()
     driver = driver_manager.setup_driver(request.config.getoption("headless"), request.config.getoption("browser_name"))
     page_control = PageControl(driver)
@@ -59,6 +61,7 @@ def pytest_sessionstart(session):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
     logger.addHandler(console_handler)
+    logger.info("starting logging..")
 
 
 @pytest.hookimpl(hookwrapper=True)
