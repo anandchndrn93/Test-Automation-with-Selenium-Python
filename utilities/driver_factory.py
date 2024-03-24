@@ -1,9 +1,12 @@
+import platform
+
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.chrome.service import Service as ChromService
 from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.ie.service import Service as IEService
+from webdriver_manager.core.os_manager import ChromeType
 from webdriver_manager.firefox import GeckoDriverManager
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
@@ -15,7 +18,7 @@ class DriverFactory:
     def __init__(self):
         self.driver = None
 
-    def setup_driver(self, browser="chrome", headless=True):
+    def setup_driver(self,  headless,browser="chrome"):
         if browser == "firefox":
             options = Options()
             options.headless = headless
@@ -25,9 +28,12 @@ class DriverFactory:
             options.add_argument("--start-maximized")
             options.add_argument("--no-sandbox")
             if headless:
-                options.headless = headless
+                options.add_argument("--headless")
                 options.add_argument("window-size=1920,1080")
-            self.driver = webdriver.Chrome(options=options, service=ChromService(ChromeDriverManager().install()))
+            if platform.system() == "Linux":
+                self.driver = webdriver.Chrome(options=options, service=ChromService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()))
+            else:
+                self.driver = webdriver.Chrome(options=options, service=ChromService(ChromeDriverManager().install()))
         elif browser == "edge":
             options = webdriver.EdgeOptions()
             options.add_argument("--no-sandbox")
