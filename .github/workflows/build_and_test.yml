@@ -28,6 +28,7 @@ jobs:
           pip install pytest-order==1.2.0
           pip install pytest-xdist==3.5.0
           pip install selenium==4.8.3
+          pip install webdriver-manager==4.0.1
       - name: Run Selenium tests on ${{ matrix.browser }}
         run: |
           python -m py.test --html=results/report.html --browser_name= ${{ matrix.browser }} -n 2
