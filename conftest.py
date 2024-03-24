@@ -26,7 +26,7 @@ def pytest_addoption(parser):
 def setup(request, context):
     global driver
     driver_manager = DriverFactory()
-    driver = driver_manager.setup_driver(request.config.getoption("browser_name"), request.config.getoption("headless"))
+    driver = driver_manager.setup_driver(request.config.getoption("headless"), request.config.getoption("browser_name"))
     page_control = PageControl(driver)
     page_control.maximize_window()
     page_control.load_url(Constants.DEMO_URL)
